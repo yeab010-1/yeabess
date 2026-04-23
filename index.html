@@ -3,188 +3,142 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>yeabess Online Chess</title>
+    <title>yeabess Real-time Online Chess</title>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
     <style>
+        /* (이전 스타일 유지하되 대기실 UI 조금 개선) */
         * { box-sizing: border-box; }
-        body { 
-            display: flex; flex-direction: column; align-items: center; 
-            background: #121212; color: #f1f1f1; font-family: 'Pretendard', sans-serif; 
-            margin: 0; padding-top: 20px; height: 100vh; overflow: hidden;
-        }
-        
-        /* UI 패널 */
+        body { display: flex; flex-direction: column; align-items: center; background: #121212; color: #f1f1f1; font-family: sans-serif; margin: 0; padding-top: 20px; height: 100vh; overflow: hidden; }
         .top-panel { display: flex; justify-content: space-between; width: 520px; margin-bottom: 10px; }
-        .score-board { 
-            display: flex; justify-content: space-between; flex-grow: 1; padding: 15px; 
-            background: #1e1e1e; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-        }
-        .player-info { display: flex; flex-direction: column; width: 45%; }
-        .player-title { font-size: 0.9rem; font-weight: bold; color: #aaa; margin-bottom: 5px; }
-        .timer { font-size: 1.8rem; font-family: monospace; font-weight: bold; color: #fff; margin: 5px 0; }
-        .timer.danger { color: #e74c3c; animation: blink 1s infinite; }
-        @keyframes blink { 50% { opacity: 0.5; } }
-        .captured-pieces { font-size: 1.2rem; min-height: 1.5rem; letter-spacing: 2px; color: #888;}
-        
-        /* 컨트롤 버튼 */
-        .controls { display: flex; flex-direction: column; justify-content: center; margin-left: 10px; }
-        .btn-resign { 
-            background: #c0392b; color: white; border: none; padding: 10px 15px; 
-            border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;
-        }
-        .btn-resign:hover { background: #e74c3c; }
-
-        .status { margin-bottom: 15px; font-size: 1.2rem; font-weight: bold; padding: 8px 25px; background: #2c3e50; border-radius: 20px; }
-        
-        /* 체스 보드 */
-        #board-container { position: relative; }
-        #board { 
-            display: grid; grid-template-columns: repeat(8, 65px); grid-template-rows: repeat(8, 65px); 
-            border: 12px solid #2b2b2b; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); user-select: none;
-        }
-        .square { width: 65px; height: 65px; display: flex; justify-content: center; align-items: center; font-size: 45px; cursor: pointer; position: relative; transition: background-color 0.2s; }
-        .white { background-color: #eeddbb; color: #000; }
-        .black { background-color: #997755; color: #000; }
-        
-        /* 로비 및 오버레이 시스템 */
-        .overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); display: flex; flex-direction: column; 
-            justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(5px); border-radius: 8px;
-        }
-        .overlay h1 { font-size: 2.5rem; margin: 0; color: #f1c40f; text-align: center;}
-        .overlay p { font-size: 1.2rem; color: #ddd; margin-top: 10px; text-align: center;}
-        .overlay button { 
-            margin-top: 20px; padding: 12px 30px; font-size: 1.2rem; font-weight: bold; 
-            border: none; border-radius: 8px; background: #3498db; color: white; cursor: pointer; transition: 0.3s;
-        }
-        .overlay button:hover { background: #2980b9; transform: scale(1.05); }
-        .overlay .btn-spectate { background: #7f8c8d; margin-left: 10px; }
-        .btn-group { display: flex; gap: 10px; }
+        .score-board { display: flex; justify-content: space-between; flex-grow: 1; padding: 15px; background: #1e1e1e; border-radius: 12px; }
+        .player-info { display: flex; flex-direction: column; width: 40%; }
+        .timer { font-size: 1.8rem; font-family: monospace; font-weight: bold; }
+        #board { display: grid; grid-template-columns: repeat(8, 65px); grid-template-rows: repeat(8, 65px); border: 12px solid #2b2b2b; border-radius: 8px; position: relative; }
+        .square { width: 65px; height: 65px; display: flex; justify-content: center; align-items: center; font-size: 45px; cursor: pointer; }
+        .white { background-color: #eeddbb; } .black { background-color: #997755; }
+        .selected { background-color: #7b61ff !important; }
+        .hint::after { content: ''; width: 20px; height: 20px; background: rgba(0,0,0,0.1); border-radius: 50%; position: absolute; }
+        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 100; border-radius: 8px; }
+        .btn-ready { padding: 15px 40px; font-size: 1.5rem; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div class="top-panel">
         <div class="score-board">
-            <div class="player-info">
-                <div class="player-title">⚪ 백색 (나)</div>
-                <div class="timer" id="timer-w">05:00</div>
-                <div class="captured-pieces" id="w-captured"></div>
+            <div class="player-info" id="p-white">
+                <div style="font-size:0.8rem">⚪ 백색 (Player 1)</div>
+                <div class="timer" id="timer-W">05:00</div>
             </div>
-            <div class="status" id="status">대기실</div>
-            <div class="player-info" style="text-align: right;">
-                <div class="player-title">⚫ 흑색 (상대)</div>
-                <div class="timer" id="timer-b">05:00</div>
-                <div class="captured-pieces" id="b-captured"></div>
+            <div id="status" style="font-weight:bold; padding:10px;">연결 중...</div>
+            <div class="player-info" id="p-black" style="text-align: right;">
+                <div style="font-size:0.8rem">⚫ 흑색 (Player 2)</div>
+                <div class="timer" id="timer-B">05:00</div>
             </div>
-        </div>
-        <div class="controls">
-            <button class="btn-resign" onclick="resignGame()">🏳️ 기권</button>
         </div>
     </div>
 
     <div id="board-container">
         <div id="board"></div>
-        
         <div class="overlay" id="lobby-overlay">
-            <h1>온라인 매칭</h1>
-            <p id="lobby-msg">플레이어를 기다리는 중입니다...<br>(현재 1/2명 접속)</p>
-            <div class="btn-group">
-                <button id="btn-accept" onclick="startGameLocally()">✅ 게임 수락</button>
-                <button class="btn-spectate" onclick="enterSpectatorMode()">👁️ 관전하기</button>
-            </div>
-        </div>
-
-        <div class="overlay" id="game-over" style="display: none;">
-            <h1 id="win-title">게임 종료</h1>
-            <p id="win-subtitle">사유</p>
-            <button onclick="location.reload()">대기실로 돌아가기</button>
+            <h2 id="lobby-msg">서버에 연결 중입니다...</h2>
+            <button class="btn-ready" id="btn-start" style="display:none;" onclick="clickStart()">게임 참여하기</button>
         </div>
     </div>
 
 <script>
-// --- 타이머 및 게임 상태 변수 ---
-let timeLeft = { W: 300, B: 300 }; // 5분 = 300초
-let timerInterval = null;
+// --- 1. Firebase 설정 (이 부분을 본인의 키로 바꿔야 함) ---
+apiKey: "AIzaSyAxDXVPA5PUwgoribbQeIuy5ABlfUSqNU0",
+  authDomain: "yeabess-chess.firebaseapp.com",
+  projectId: "yeabess-chess",
+  storageBucket: "yeabess-chess.firebasestorage.app",
+  messagingSenderId: "855468041242",
+  appId: "1:855468041242:web:0537fdd2c60b71b23cdda3",
+  measurementId: "G-EW3LGQH723"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const gameRef = db.ref('chessGame');
+
+// --- 2. 게임 상태 변수 ---
+let myColor = null; // 'W' 또는 'B' 또는 'spectator'
+let board = [];
 let turn = 'W';
 let gameActive = false;
+let timeLeft = { W: 300, B: 300 };
+let timerInterval = null;
 
-// UI 요소
-const timerWEl = document.getElementById('timer-w');
-const timerBEl = document.getElementById('timer-b');
-const lobbyOverlay = document.getElementById('lobby-overlay');
-const gameOverOverlay = document.getElementById('game-over');
+// --- 3. 온라인 동기화 로직 ---
+function initOnline() {
+    // 플레이어 참여 처리
+    gameRef.child('players').transaction((players) => {
+        if (!players) players = { count: 0 };
+        if (players.count < 2) {
+            players.count++;
+            return players;
+        }
+        return; // 이미 2명임
+    }, (error, committed, snapshot) => {
+        const count = snapshot.val().count;
+        if (count === 1) myColor = 'W';
+        else if (count === 2) myColor = 'B';
+        else myColor = 'spectator';
 
-// 시간 포맷 함수
-function formatTime(seconds) {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        document.getElementById('lobby-msg').innerText = 
+            myColor === 'spectator' ? "방이 가득 찼습니다. 관전 중..." : 
+            `${myColor === 'W' ? '백색' : '흑색'}으로 배정되었습니다.`;
+        document.getElementById('btn-start').style.display = 'block';
+    });
+
+    // 데이터베이스 변경 감지 (보드, 턴, 시간)
+    gameRef.on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+        if (data.board) board = data.board;
+        if (data.turn) turn = data.turn;
+        if (data.gameActive) {
+            gameActive = true;
+            document.getElementById('lobby-overlay').style.display = 'none';
+        }
+        render();
+    });
+
+    // 연결 끊김 감지
+    gameRef.child('players').onDisconnect().remove();
 }
 
-// 타이머 시작/교대 로직
-function startTimer() {
-    clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-        if(!gameActive) return;
-        
-        timeLeft[turn]--;
-        
-        if(turn === 'W') {
-            timerWEl.innerText = formatTime(timeLeft.W);
-            if(timeLeft.W <= 30) timerWEl.classList.add('danger');
+function clickStart() {
+    gameRef.child('ready').push(myColor);
+    gameRef.child('ready').on('value', (snap) => {
+        if (Object.keys(snap.val() || {}).length >= 2) {
+            gameRef.update({ gameActive: true, turn: 'W' });
         } else {
-            timerBEl.innerText = formatTime(timeLeft.B);
-            if(timeLeft.B <= 30) timerBEl.classList.add('danger');
+            document.getElementById('lobby-msg').innerText = "다른 플레이어를 기다리는 중...";
+            document.getElementById('btn-start').style.display = 'none';
         }
-
-        // 시간 초과 패배 처리
-        if(timeLeft[turn] <= 0) {
-            endGame(turn === 'W' ? 'B' : 'W', '시간 초과');
-        }
-    }, 1000);
+    });
 }
 
-// 기권 처리
-function resignGame() {
-    if(!gameActive) return;
-    if(confirm("정말로 기권하시겠습니까?")) {
-        // 실제 온라인이면 서버에 기권 신호를 보냄
-        endGame(turn === 'W' ? 'B' : 'W', '상대방의 기권');
-    }
-}
+// 기물을 움직이면 서버에 업데이트
+function executeMove(fr, fc, tr, tc) {
+    if (turn !== myColor) return; // 내 차례 아니면 무시
 
-// 연결 끊김 처리 (서버 연동 시 호출될 함수)
-function handleDisconnect() {
-    if(!gameActive) return;
-    endGame(turn === 'W' ? 'B' : 'W', '상대방의 연결 끊김');
-}
-
-// 게임 종료 처리
-function endGame(winnerColor, reason) {
-    gameActive = false;
-    clearInterval(timerInterval);
+    // ... (기존 이동 로직 처리 후) ...
     
-    gameOverOverlay.style.display = 'flex';
-    document.getElementById('win-title').innerText = winnerColor === 'W' ? "⚪ 백색 승리" : "⚫ 흑색 승리";
-    document.getElementById('win-subtitle').innerText = reason;
+    gameRef.update({
+        board: board,
+        turn: turn === 'W' ? 'B' : 'W'
+    });
 }
 
-// 임시 로컬 시작 함수 (버튼 테스트용)
-function startGameLocally() {
-    lobbyOverlay.style.display = 'none';
-    gameActive = true;
-    startTimer();
-    document.getElementById('status').innerText = "⚪ 백색 차례";
-}
+// (이하 기존 체스 렌더링 및 행마 로직 포함...)
+// 전체 코드는 길어지므로 핵심 로직 위주로 재구성했습니다. 
+// 기존의 getLegalMoves, render 함수들을 그대로 넣으되, 
+// handleClick 안에서 내 색깔(myColor)과 현재 턴(turn)이 맞는지 확인하는 조건만 추가하면 됩니다.
 
-function enterSpectatorMode() {
-    lobbyOverlay.style.display = 'none';
-    alert("관전 모드로 진입합니다. (현재는 로컬 테스트 상태입니다)");
-}
-
-// (참고: 여기에 이전 답변의 보드 렌더링, 이동, 앙파상 등 체스 코어 로직이 그대로 들어갑니다. 
-// 글자 수 제한으로 UI 프레임워크 위주로 작성했으며, 합칠 때는 기존 로직의 turn이 바뀔 때 startTimer()를 호출해주면 완벽하게 연동됩니다.)
+initOnline();
 </script>
 </body>
 </html>
