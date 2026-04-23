@@ -2,35 +2,87 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>yeabess | 준비 중</title>
+    <title>yeabess Chess</title>
     <style>
-        /* 화면 중앙 정렬을 위한 최소한의 스타일 */
-        body {
-            margin: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #ffffff; /* 배경색 (흰색) */
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            color: #333;
-        }
-        .container {
-            text-align: center;
-        }
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 400;
-            color: #888;
-        }
+        body { display: flex; flex-direction: column; align-items: center; background: #222; color: white; font-family: sans-serif; }
+        #board { display: grid; grid-template-columns: repeat(8, 60px); grid-template-rows: repeat(8, 60px); border: 5px solid #555; }
+        .square { width: 60px; height: 60px; display: flex; justify-content: center; align-items: center; font-size: 40px; cursor: pointer; }
+        .white { background-color: #eeeed2; }
+        .black { background-color: #769656; }
+        .selected { background-color: #f7f769 !important; }
+        .status { margin: 20px; font-size: 1.2rem; }
     </style>
 </head>
 <body>
+    <div class="status" id="status">백색 차례</div>
+    <div id="board"></div>
 
-    <div class="container">
-        <h1>yeabess</h1>
-        </div>
+    <script>
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('status');
+        let selectedSquare = null;
+        let turn = 'white';
 
+        // 초기 보드 상태 (간단한 기물 배치)
+        const pieces = {
+            'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
+            'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙'
+        };
+
+        let boardLayout = [
+            ['r','n','b','q','k','b','n','r'],
+            ['p','p','p','p','p','p','p','p'],
+            ['','','','','','','',''],
+            ['','','','','','','',''],
+            ['','','','','','','',''],
+            ['','','','','','','',''],
+            ['P','P','P','P','P','P','P','P'],
+            ['R','N','B','Q','K','B','N','R']
+        ];
+
+        function createBoard() {
+            boardElement.innerHTML = '';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(r + c) % 2 === 0 ? 'white' : 'black'}`;
+                    square.dataset.row = r;
+                    square.dataset.col = c;
+                    square.innerText = pieces[boardLayout[r][c]] || '';
+                    square.onclick = () => handleSquareClick(r, c);
+                    boardElement.appendChild(square);
+                }
+            }
+        }
+
+        function handleSquareClick(r, c) {
+            const piece = boardLayout[r][c];
+            const isWhite = piece === piece.toUpperCase() && piece !== '';
+
+            if (selectedSquare) {
+                // 기물 이동 로직
+                const [sr, sc] = selectedSquare;
+                if (sr === r && sc === c) {
+                    selectedSquare = null;
+                } else {
+                    boardLayout[r][c] = boardLayout[sr][sc];
+                    boardLayout[sr][sc] = '';
+                    turn = turn === 'white' ? 'black' : 'white';
+                    statusElement.innerText = turn === 'white' ? '백색 차례' : '흑색 차례';
+                    selectedSquare = null;
+                }
+                createBoard();
+            } else {
+                // 기물 선택
+                if (piece && ((turn === 'white' && isWhite) || (turn === 'black' && !isWhite))) {
+                    selectedSquare = [r, c];
+                    createBoard();
+                    document.querySelector(`[data-row="${r}"][data-col="${c}"]`).classList.add('selected');
+                }
+            }
+        }
+
+        createBoard();
+    </script>
 </body>
 </html>
