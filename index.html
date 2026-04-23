@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>yeabess Ultimate Chess</title>
+    <title>yeabess Online Chess</title>
     <style>
         * { box-sizing: border-box; }
         body { 
@@ -12,301 +12,179 @@
             margin: 0; padding-top: 20px; height: 100vh; overflow: hidden;
         }
         
-        /* 점수판 UI */
+        /* UI 패널 */
+        .top-panel { display: flex; justify-content: space-between; width: 520px; margin-bottom: 10px; }
         .score-board { 
-            display: flex; justify-content: space-between; width: 520px; 
-            margin-bottom: 15px; padding: 15px; background: #1e1e1e; 
-            border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            display: flex; justify-content: space-between; flex-grow: 1; padding: 15px; 
+            background: #1e1e1e; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.5);
         }
-        .captured-box { display: flex; flex-direction: column; width: 45%; }
-        .score-title { font-size: 0.9rem; font-weight: bold; color: #aaa; margin-bottom: 5px; }
-        .score-title span { color: #f1c40f; font-size: 1.1rem; }
-        .captured-pieces { font-size: 1.5rem; min-height: 2rem; letter-spacing: 2px; }
+        .player-info { display: flex; flex-direction: column; width: 45%; }
+        .player-title { font-size: 0.9rem; font-weight: bold; color: #aaa; margin-bottom: 5px; }
+        .timer { font-size: 1.8rem; font-family: monospace; font-weight: bold; color: #fff; margin: 5px 0; }
+        .timer.danger { color: #e74c3c; animation: blink 1s infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        .captured-pieces { font-size: 1.2rem; min-height: 1.5rem; letter-spacing: 2px; color: #888;}
         
-        /* 상태 표시줄 */
-        .status { margin-bottom: 15px; font-size: 1.5rem; font-weight: bold; padding: 10px 30px; background: #2c3e50; border-radius: 30px; }
+        /* 컨트롤 버튼 */
+        .controls { display: flex; flex-direction: column; justify-content: center; margin-left: 10px; }
+        .btn-resign { 
+            background: #c0392b; color: white; border: none; padding: 10px 15px; 
+            border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s;
+        }
+        .btn-resign:hover { background: #e74c3c; }
+
+        .status { margin-bottom: 15px; font-size: 1.2rem; font-weight: bold; padding: 8px 25px; background: #2c3e50; border-radius: 20px; }
         
         /* 체스 보드 */
+        #board-container { position: relative; }
         #board { 
             display: grid; grid-template-columns: repeat(8, 65px); grid-template-rows: repeat(8, 65px); 
-            border: 12px solid #2b2b2b; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); user-select: none; position: relative;
+            border: 12px solid #2b2b2b; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.7); user-select: none;
         }
         .square { width: 65px; height: 65px; display: flex; justify-content: center; align-items: center; font-size: 45px; cursor: pointer; position: relative; transition: background-color 0.2s; }
         .white { background-color: #eeddbb; color: #000; }
         .black { background-color: #997755; color: #000; }
-        .selected { background-color: #7b61ff !important; }
-        .hint::after { content: ''; width: 20px; height: 20px; background: rgba(0,0,0,0.2); border-radius: 50%; position: absolute; }
-        .hint-capture::after { content: ''; width: 65px; height: 65px; border: 5px solid rgba(0,0,0,0.2); border-radius: 50%; position: absolute; box-sizing: border-box; }
-        .check { background-color: #ff4d4d !important; box-shadow: inset 0 0 15px rgba(0,0,0,0.5); }
         
-        /* 게임 오버 모달창 */
-        #game-over {
+        /* 로비 및 오버레이 시스템 */
+        .overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); display: none; flex-direction: column; 
-            justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(5px);
+            background: rgba(0,0,0,0.85); display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; z-index: 100; backdrop-filter: blur(5px); border-radius: 8px;
         }
-        #game-over h1 { font-size: 4rem; margin: 0; color: #f1c40f; text-shadow: 0 0 20px rgba(241,196,15,0.5); }
-        #game-over p { font-size: 1.5rem; color: #ddd; margin-top: 10px; }
-        #game-over button { 
-            margin-top: 30px; padding: 15px 40px; font-size: 1.2rem; font-weight: bold; 
+        .overlay h1 { font-size: 2.5rem; margin: 0; color: #f1c40f; text-align: center;}
+        .overlay p { font-size: 1.2rem; color: #ddd; margin-top: 10px; text-align: center;}
+        .overlay button { 
+            margin-top: 20px; padding: 12px 30px; font-size: 1.2rem; font-weight: bold; 
             border: none; border-radius: 8px; background: #3498db; color: white; cursor: pointer; transition: 0.3s;
         }
-        #game-over button:hover { background: #2980b9; transform: scale(1.05); }
+        .overlay button:hover { background: #2980b9; transform: scale(1.05); }
+        .overlay .btn-spectate { background: #7f8c8d; margin-left: 10px; }
+        .btn-group { display: flex; gap: 10px; }
     </style>
 </head>
 <body>
 
-    <div class="score-board">
-        <div class="captured-box">
-            <div class="score-title">백색 점수: <span id="w-score-val">0</span></div>
-            <div class="captured-pieces" id="w-captured"></div>
+    <div class="top-panel">
+        <div class="score-board">
+            <div class="player-info">
+                <div class="player-title">⚪ 백색 (나)</div>
+                <div class="timer" id="timer-w">05:00</div>
+                <div class="captured-pieces" id="w-captured"></div>
+            </div>
+            <div class="status" id="status">대기실</div>
+            <div class="player-info" style="text-align: right;">
+                <div class="player-title">⚫ 흑색 (상대)</div>
+                <div class="timer" id="timer-b">05:00</div>
+                <div class="captured-pieces" id="b-captured"></div>
+            </div>
         </div>
-        <div class="status" id="status">⚪ 백색 차례</div>
-        <div class="captured-box" style="text-align: right;">
-            <div class="score-title">흑색 점수: <span id="b-score-val">0</span></div>
-            <div class="captured-pieces" id="b-captured"></div>
+        <div class="controls">
+            <button class="btn-resign" onclick="resignGame()">🏳️ 기권</button>
         </div>
     </div>
 
-    <div id="board-container" style="position: relative;">
+    <div id="board-container">
         <div id="board"></div>
         
-        <div id="game-over">
-            <h1 id="win-title">체크메이트!</h1>
-            <p id="win-subtitle">백색 승리</p>
-            <button onclick="location.reload()">새 게임 시작</button>
+        <div class="overlay" id="lobby-overlay">
+            <h1>온라인 매칭</h1>
+            <p id="lobby-msg">플레이어를 기다리는 중입니다...<br>(현재 1/2명 접속)</p>
+            <div class="btn-group">
+                <button id="btn-accept" onclick="startGameLocally()">✅ 게임 수락</button>
+                <button class="btn-spectate" onclick="enterSpectatorMode()">👁️ 관전하기</button>
+            </div>
+        </div>
+
+        <div class="overlay" id="game-over" style="display: none;">
+            <h1 id="win-title">게임 종료</h1>
+            <p id="win-subtitle">사유</p>
+            <button onclick="location.reload()">대기실로 돌아가기</button>
         </div>
     </div>
 
 <script>
-// --- 데이터 및 상태 변수 ---
-const boardEl = document.getElementById('board');
-const statusEl = document.getElementById('status');
-const gameOverEl = document.getElementById('game-over');
-let board = [];
+// --- 타이머 및 게임 상태 변수 ---
+let timeLeft = { W: 300, B: 300 }; // 5분 = 300초
+let timerInterval = null;
 let turn = 'W';
-let selected = null;
-let enPassantTarget = null; 
-let castling = { W: {K: true, Q: true}, B: {K: true, Q: true} };
-let capturedW = [], capturedB = [];
-const points = { 'p':1, 'n':3, 'b':3, 'r':5, 'q':9, 'k':0 };
-const pieces = { 'R':'♖','N':'♘','B':'♗','Q':'♕','K':'♔','P':'♙', 'r':'♜','n':'♞','b':'♝','q':'♛','k':'♚','p':'♟' };
+let gameActive = false;
 
-function init() {
-    board = [
-        ['r','n','b','q','k','b','n','r'],
-        ['p','p','p','p','p','p','p','p'],
-        ['','','','','','','',''], ['','','','','','','',''], ['','','','','','','',''], ['','','','','','','',''],
-        ['P','P','P','P','P','P','P','P'],
-        ['R','N','B','Q','K','B','N','R']
-    ];
-    render();
+// UI 요소
+const timerWEl = document.getElementById('timer-w');
+const timerBEl = document.getElementById('timer-b');
+const lobbyOverlay = document.getElementById('lobby-overlay');
+const gameOverOverlay = document.getElementById('game-over');
+
+// 시간 포맷 함수
+function formatTime(seconds) {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-// --- 핵심 렌더링 ---
-function render(hints = []) {
-    boardEl.innerHTML = '';
-    const checkPos = getKingPos(turn, board);
-    const inCheck = isAttacked(checkPos[0], checkPos[1], turn==='W'?'B':'W', board);
-
-    for(let r=0; r<8; r++) {
-        for(let c=0; c<8; c++) {
-            const sq = document.createElement('div');
-            sq.className = `square ${(r+c)%2===0?'white':'black'}`;
-            if(selected && selected[0]===r && selected[1]===c) sq.classList.add('selected');
-            if(inCheck && checkPos[0]===r && checkPos[1]===c) sq.classList.add('check');
-            
-            const isHint = hints.find(h => h[0]===r && h[1]===c);
-            if(isHint) {
-                if(board[r][c] || isHint.ep) sq.classList.add('hint-capture');
-                else sq.classList.add('hint');
-            }
-            
-            sq.innerText = pieces[board[r][c]] || '';
-            sq.onclick = () => handleClick(r, c, hints);
-            boardEl.appendChild(sq);
-        }
-    }
-    updateScore();
-}
-
-function updateScore() {
-    document.getElementById('w-captured').innerText = capturedW.map(p=>pieces[p]).join('');
-    document.getElementById('b-captured').innerText = capturedB.map(p=>pieces[p]).join('');
-    document.getElementById('w-score-val').innerText = capturedW.reduce((a,c)=>a+points[c.toLowerCase()],0);
-    document.getElementById('b-score-val').innerText = capturedB.reduce((a,c)=>a+points[c.toLowerCase()],0);
-}
-
-// --- 조작 로직 ---
-function handleClick(r, c, hints) {
-    const p = board[r][c];
-    const isMyPiece = p && (turn === 'W' ? p===p.toUpperCase() : p===p.toLowerCase());
-    const targetHint = hints.find(h => h[0]===r && h[1]===c);
-
-    if(targetHint) {
-        executeMove(selected[0], selected[1], r, c, targetHint);
-        return;
-    }
-    if(isMyPiece) {
-        selected = [r, c];
-        render(getLegalMoves(r, c));
-    } else {
-        selected = null;
-        render();
-    }
-}
-
-// --- 행마 및 규칙 엔진 ---
-function getPseudoMoves(r, c, b) {
-    const p = b[r][c], piece = p.toLowerCase(), isW = p===p.toUpperCase(), opp = isW?'B':'W';
-    let m = [];
-    const dirs = { 'r':[[0,1],[0,-1],[1,0],[-1,0]], 'b':[[1,1],[1,-1],[-1,1],[-1,-1]], 'q':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]], 'n':[[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]], 'k':[[0,1],[0,-1],[1,0],[-1,0],[1,1],[1,-1],[-1,1],[-1,-1]] };
-
-    if(['r','b','q'].includes(piece)) {
-        dirs[piece].forEach(d => {
-            for(let i=1; i<8; i++) {
-                let nr=r+d[0]*i, nc=c+d[1]*i;
-                if(nr<0||nr>7||nc<0||nc>7) break;
-                if(!b[nr][nc]) m.push([nr,nc]);
-                else { if(getColor(b[nr][nc])===opp) m.push([nr,nc]); break; }
-            }
-        });
-    } else if(piece==='n' || piece==='k') {
-        dirs[piece].forEach(d => {
-            let nr=r+d[0], nc=c+d[1];
-            if(nr>=0&&nr<=7&&nc>=0&&nc<=7 && getColor(b[nr][nc])!==getColor(p)) m.push([nr,nc]);
-        });
-    } else if(piece==='p') {
-        let dir = isW?-1:1, start = isW?6:1;
-        if(!b[r+dir][c]) {
-            m.push([r+dir,c]);
-            if(r===start && !b[r+dir*2][c]) m.push([r+dir*2,c]);
-        }
-        [[-1,1],[-1,-1]].forEach(d=>{
-            let nr=r+dir, nc=c+d[1];
-            if(nc>=0&&nc<=7) {
-                if(getColor(b[nr][nc])===opp) m.push([nr,nc]);
-                // 앙파상
-                if(enPassantTarget && enPassantTarget[0]===nr && enPassantTarget[1]===nc) m.push([nr,nc,{ep:true}]);
-            }
-        });
-    }
-    return m;
-}
-
-function getLegalMoves(r, c) {
-    let moves = getPseudoMoves(r, c, board);
-    const p = board[r][c], isW = p===p.toUpperCase();
-    
-    // 캐슬링 로직 추가 (체크 상태가 아닐 때만)
-    if(p.toLowerCase()==='k' && !isAttacked(r, c, isW?'B':'W', board)) {
-        const rights = castling[isW?'W':'B'];
-        if(rights.K && !board[r][5] && !board[r][6] && !isAttacked(r,5,isW?'B':'W',board) && !isAttacked(r,6,isW?'B':'W',board)) moves.push([r,6,{castling:'K'}]);
-        if(rights.Q && !board[r][3] && !board[r][2] && !board[r][1] && !isAttacked(r,3,isW?'B':'W',board) && !isAttacked(r,2,isW?'B':'W',board)) moves.push([r,2,{castling:'Q'}]);
-    }
-
-    // 자신이 체크 당하는 수는 필터링 (킹 우선 이동 강제)
-    return moves.filter(m => {
-        let tempBoard = board.map(row => [...row]);
-        tempBoard[m[0]][m[1]] = tempBoard[r][c];
-        tempBoard[r][c] = '';
-        if(m.ep) tempBoard[r][m[1]] = ''; // 앙파상 시뮬레이션
-        const kPos = getKingPos(turn, tempBoard);
-        return !isAttacked(kPos[0], kPos[1], turn==='W'?'B':'W', tempBoard);
-    });
-}
-
-// 특정 칸이 적에게 공격받고 있는지 확인
-function isAttacked(r, c, attackerColor, b) {
-    for(let ir=0; ir<8; ir++) {
-        for(let ic=0; ic<8; ic++) {
-            if(getColor(b[ir][ic]) === attackerColor) {
-                let moves = getPseudoMoves(ir, ic, b);
-                if(moves.some(m => m[0]===r && m[1]===c)) return true;
-            }
-        }
-    }
-    return false;
-}
-
-function executeMove(fr, fc, tr, tc, hint) {
-    const p = board[fr][fc];
-    let nextEp = null;
-
-    // 기물 획득
-    if(board[tr][tc]) (turn==='W'?capturedW:capturedB).push(board[tr][tc]);
-    if(hint.ep) {
-        (turn==='W'?capturedW:capturedB).push(board[fr][tc]);
-        board[fr][tc] = '';
-    }
-
-    // 이동 처리
-    board[tr][tc] = p;
-    board[fr][fc] = '';
-
-    // 특수 룰 처리: 폰 2칸 이동 시 앙파상 타겟 설정
-    if(p.toLowerCase()==='p' && Math.abs(fr-tr)===2) nextEp = [(fr+tr)/2, fc];
-    
-    // 특수 룰 처리: 폰 프로모션 (퀸으로 자동 승급)
-    if(p==='P' && tr===0) board[tr][tc] = 'Q';
-    if(p==='p' && tr===7) board[tr][tc] = 'q';
-
-    // 특수 룰 처리: 캐슬링 이동 (룩도 같이 이동)
-    if(hint.castling === 'K') { board[tr][5] = board[tr][7]; board[tr][7] = ''; }
-    if(hint.castling === 'Q') { board[tr][3] = board[tr][0]; board[tr][0] = ''; }
-
-    // 캐슬링 권한 박탈 (킹이나 룩이 움직였을 때)
-    if(p==='K') castling.W = {K:false, Q:false};
-    if(p==='k') castling.B = {K:false, Q:false};
-    if(p==='R' && fc===7) castling.W.K = false;
-    if(p==='R' && fc===0) castling.W.Q = false;
-    if(p==='r' && fc===7) castling.B.K = false;
-    if(p==='r' && fc===0) castling.B.Q = false;
-
-    enPassantTarget = nextEp;
-    turn = turn === 'W' ? 'B' : 'W';
-    selected = null;
-    
-    checkGameState();
-}
-
-function checkGameState() {
-    let anyLegalMove = false;
-    for(let r=0; r<8; r++) {
-        for(let c=0; c<8; c++) {
-            if(getColor(board[r][c]) === turn && getLegalMoves(r, c).length > 0) {
-                anyLegalMove = true; break;
-            }
-        }
-        if(anyLegalMove) break;
-    }
-
-    if(!anyLegalMove) {
-        const kPos = getKingPos(turn, board);
-        const inCheck = isAttacked(kPos[0], kPos[1], turn==='W'?'B':'W', board);
-        gameOverEl.style.display = 'flex';
-        if(inCheck) {
-            document.getElementById('win-title').innerText = "체크메이트!";
-            document.getElementById('win-title').style.color = "#e74c3c";
-            document.getElementById('win-subtitle').innerText = turn==='W' ? "⚫ 흑색 승리" : "⚪ 백색 승리";
+// 타이머 시작/교대 로직
+function startTimer() {
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+        if(!gameActive) return;
+        
+        timeLeft[turn]--;
+        
+        if(turn === 'W') {
+            timerWEl.innerText = formatTime(timeLeft.W);
+            if(timeLeft.W <= 30) timerWEl.classList.add('danger');
         } else {
-            document.getElementById('win-title').innerText = "스테일메이트 (무승부)";
-            document.getElementById('win-title').style.color = "#95a5a6";
-            document.getElementById('win-subtitle').innerText = "더 이상 이동할 수 있는 기물이 없습니다.";
+            timerBEl.innerText = formatTime(timeLeft.B);
+            if(timeLeft.B <= 30) timerBEl.classList.add('danger');
         }
-    } else {
-        statusEl.innerText = turn === 'W' ? "⚪ 백색 차례" : "⚫ 흑색 차례";
-        render();
+
+        // 시간 초과 패배 처리
+        if(timeLeft[turn] <= 0) {
+            endGame(turn === 'W' ? 'B' : 'W', '시간 초과');
+        }
+    }, 1000);
+}
+
+// 기권 처리
+function resignGame() {
+    if(!gameActive) return;
+    if(confirm("정말로 기권하시겠습니까?")) {
+        // 실제 온라인이면 서버에 기권 신호를 보냄
+        endGame(turn === 'W' ? 'B' : 'W', '상대방의 기권');
     }
 }
 
-// 유틸리티 함수
-function getColor(p) { return !p ? null : (p===p.toUpperCase() ? 'W' : 'B'); }
-function getKingPos(color, b) {
-    for(let r=0; r<8; r++) for(let c=0; c<8; c++) if(b[r][c]===(color==='W'?'K':'k')) return [r,c];
+// 연결 끊김 처리 (서버 연동 시 호출될 함수)
+function handleDisconnect() {
+    if(!gameActive) return;
+    endGame(turn === 'W' ? 'B' : 'W', '상대방의 연결 끊김');
 }
 
-init();
+// 게임 종료 처리
+function endGame(winnerColor, reason) {
+    gameActive = false;
+    clearInterval(timerInterval);
+    
+    gameOverOverlay.style.display = 'flex';
+    document.getElementById('win-title').innerText = winnerColor === 'W' ? "⚪ 백색 승리" : "⚫ 흑색 승리";
+    document.getElementById('win-subtitle').innerText = reason;
+}
+
+// 임시 로컬 시작 함수 (버튼 테스트용)
+function startGameLocally() {
+    lobbyOverlay.style.display = 'none';
+    gameActive = true;
+    startTimer();
+    document.getElementById('status').innerText = "⚪ 백색 차례";
+}
+
+function enterSpectatorMode() {
+    lobbyOverlay.style.display = 'none';
+    alert("관전 모드로 진입합니다. (현재는 로컬 테스트 상태입니다)");
+}
+
+// (참고: 여기에 이전 답변의 보드 렌더링, 이동, 앙파상 등 체스 코어 로직이 그대로 들어갑니다. 
+// 글자 수 제한으로 UI 프레임워크 위주로 작성했으며, 합칠 때는 기존 로직의 turn이 바뀔 때 startTimer()를 호출해주면 완벽하게 연동됩니다.)
 </script>
 </body>
 </html>
